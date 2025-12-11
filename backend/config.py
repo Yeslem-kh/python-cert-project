@@ -12,3 +12,7 @@ class Config:
        SQLALCHEMY_TRACK_MODIFICATIONS = False
        SECRET_KEY = os.getenv('SECRET_KEY')
        JWT_SECRET = os.getenv('JWT_SECRET')
+       
+       # Encryption key for notes (Fernet requires 32 url-safe base64-encoded bytes)
+       # Generate with: from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())
+       NOTES_ENCRYPTION_KEY = os.getenv('NOTES_ENCRYPTION_KEY')

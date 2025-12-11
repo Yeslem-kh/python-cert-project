@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { User, Lock, LogIn, ArrowRight } from 'lucide-react';
 
 const Login = ({ onLogin, onSwitchToRegister }) => {
   const [formData, setFormData] = useState({ username: '', password: '' });
@@ -21,9 +22,10 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+          <User size={14} />
           Username
         </label>
         <input
@@ -31,7 +33,7 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
           value={formData.username}
           onChange={(e) => setFormData({ ...formData, username: e.target.value })}
           onKeyPress={handleKeyPress}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-gray-800 placeholder-gray-400"
           placeholder="Enter username"
           disabled={loading}
           autoFocus
@@ -39,7 +41,8 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+          <Lock size={14} />
           Password
         </label>
         <input
@@ -47,7 +50,7 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
           value={formData.password}
           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
           onKeyPress={handleKeyPress}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-gray-800 placeholder-gray-400"
           placeholder="Enter password"
           disabled={loading}
         />
@@ -56,22 +59,30 @@ const Login = ({ onLogin, onSwitchToRegister }) => {
       <button
         onClick={handleSubmit}
         disabled={loading}
-        className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+        className="btn-primary w-full flex items-center justify-center gap-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? 'Logging in...' : 'Login'}
+        {loading ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Logging in...
+          </>
+        ) : (
+          <>
+            <LogIn size={16} />
+            Sign In
+          </>
+        )}
       </button>
 
-      <div className="text-center space-y-2">
-        <p className="text-xs text-gray-500">
-          Demo: <strong>admin / admin123</strong> or <strong>user1 / password123</strong>
-        </p>
-        <p className="text-sm text-gray-600">
+      <div className="text-center pt-2">
+        <p className="text-sm text-gray-500">
           Don't have an account?{' '}
           <button
             onClick={onSwitchToRegister}
-            className="text-indigo-600 hover:text-indigo-700 font-semibold"
+            className="text-indigo-600 hover:text-indigo-700 font-semibold inline-flex items-center gap-1"
           >
             Register here
+            <ArrowRight size={14} />
           </button>
         </p>
       </div>

@@ -7,4 +7,4 @@ import React from 'react'
      <React.StrictMode>
        <App />
      </React.StrictMode>,
-   )
+   )  

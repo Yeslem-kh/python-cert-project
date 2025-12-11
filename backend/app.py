@@ -5,6 +5,8 @@ from models import db, User, Note
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 # IMPORTANT: When using cookies with CORS, set supports_credentials=True
@@ -12,6 +14,34 @@ CORS(app, supports_credentials=True)
 
 app.config.from_object(Config)
 db.init_app(app)
+
+# Initialize Fernet cipher for note encryption
+def get_fernet():
+    key = app.config.get('NOTES_ENCRYPTION_KEY')
+    if key:
+        # Ensure key is bytes
+        if isinstance(key, str):
+            key = key.encode()
+        return Fernet(key)
+    return None
+
+def encrypt_content(content):
+    """Encrypt note content"""
+    fernet = get_fernet()
+    if fernet and content:
+        return fernet.encrypt(content.encode()).decode()
+    return content
+
+def decrypt_content(encrypted_content):
+    """Decrypt note content"""
+    fernet = get_fernet()
+    if fernet and encrypted_content:
+        try:
+            return fernet.decrypt(encrypted_content.encode()).decode()
+        except Exception:
+            # Return as-is if decryption fails (for legacy unencrypted content)
+            return encrypted_content
+    return encrypted_content
 
 def generate_token(user_id, role):
     payload = {
@@ -64,7 +94,7 @@ def register():
     user = User(
         username=data['username'],
         email=data['email'],
-        password=data['password'],
+        password=generate_password_hash(data['password']),
         role='user'
     )
     
@@ -103,9 +133,9 @@ def register():
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
-    user = User.query.filter_by(username=data['username'], password=data['password']).first()
+    user = User.query.filter_by(username=data['username']).first()
     
-    if not user:
+    if not user or not check_password_hash(user.password, data['password']):
         return jsonify({'error': 'Invalid credentials'}), 401
     
     token = generate_token(user.id, user.role)
@@ -168,7 +198,7 @@ def update_profile(current_user):
     if 'email' in data:
         current_user.email = data['email']
     if 'password' in data and data['password']:
-        current_user.password = data['password']
+        current_user.password = generate_password_hash(data['password'])
     
     db.session.commit()
     
@@ -189,7 +219,7 @@ def get_notes(current_user):
     return jsonify([{
         'id': note.id,
         'title': note.title,
-        'content': note.content,
+        'content': decrypt_content(note.content),
         'createdAt': note.created_at.isoformat(),
         'updatedAt': note.updated_at.isoformat()
     } for note in notes])
@@ -200,7 +230,7 @@ def create_note(current_user):
     data = request.json
     note = Note(
         title=data['title'],
-        content=data['content'],
+        content=encrypt_content(data['content']),
         user_id=current_user.id
     )
     db.session.add(note)
@@ -209,7 +239,7 @@ def create_note(current_user):
     return jsonify({
         'id': note.id,
         'title': note.title,
-        'content': note.content,
+        'content': data['content'],  # Return unencrypted content to user
         'createdAt': note.created_at.isoformat()
     }), 201
 
@@ -222,13 +252,13 @@ def update_note(current_user, note_id):
     
     data = request.json
     note.title = data['title']
-    note.content = data['content']
+    note.content = encrypt_content(data['content'])
     db.session.commit()
     
     return jsonify({
         'id': note.id,
         'title': note.title,
-        'content': note.content,
+        'content': data['content'],  # Return unencrypted content to user
         'updatedAt': note.updated_at.isoformat()
     })
 
@@ -247,33 +277,8 @@ def delete_note(current_user, note_id):
 def init_db():
     with app.app_context():
         db.create_all()
-        
-        # Create admin user if not exists
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                email='admin@example.com',
-                password='admin123',
-                role='admin'
-            )
-            admin_token = generate_token(1, 'admin')
-            admin.jwt_token = admin_token
-            db.session.add(admin)
-            
-            # Create demo user
-            user = User(
-                username='user1',
-                email='user1@example.com',
-                password='password123',
-                role='user'
-            )
-            user_token = generate_token(2, 'user')
-            user.jwt_token = user_token
-            db.session.add(user)
-            
-            db.session.commit()
-            print('Database initialized with demo users!')
+        print('Database initialized!')
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -158,42 +158,7 @@ function App() {
     }
   };
 
-  // IDOR Exploit handler (Modified: JWT parameter removed)
-  // NOTE: This will only work if the /api/user/profile/:userId endpoint does NOT require authentication.
-  // If it requires auth, the cookie will be sent automatically.
-  // const handleExploit = async () => {
-  //   try {
-  //     const adminData = await api.getUserProfile(1); // Assuming the JWT is not needed or sent via cookie
-      
-  //     alert(
-  //       `🚨 ADMIN JWT TOKEN FOUND!\n\n` +
-  //       // WARNING: The JWT is no longer returned in the standard response, 
-  //       // so the exploit below may only work if the vulnerable endpoint is called WITHOUT the cookie, 
-  //       // and the server doesn't check for it.
-  //       `Token: ${adminData.jwt}\n\n` + 
-  //       `Username: ${adminData.username}\n` +
-  //       `Email: ${adminData.email}\n` +
-  //       `Role: ${adminData.role}\n\n` +
-  //       `You can now login as admin using this token!`
-  //     );
-
-      // Automatically switch to admin
-  //     const adminUser = {
-  //       id: adminData.id,
-  //       username: adminData.username,
-  //       email: adminData.email,
-  //       role: adminData.role,
-  //     };
-      
-  //     setUser(adminUser);
-  //     localStorage.setItem('user', JSON.stringify(adminUser));
-  //     setCurrentPage('admin');
-  //     showSuccess('Successfully exploited IDOR vulnerability!');
-  //   } catch (err) {
-  //     showError('Failed to exploit vulnerability: ' + err.message);
-  //   }
-  // };
-
+  
 
   // Render auth page (Unchanged)
   if (!user) {
@@ -202,8 +167,8 @@ function App() {
         <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-6">
             <Lock className="mx-auto mb-2 text-indigo-600" size={48} />
-            <h1 className="text-3xl font-bold text-gray-800">SecureNotes</h1>
-            <p className="text-sm text-gray-500 mt-1">IDOR Vulnerability Challenge</p>
+            <h1 className="text-3xl font-bold text-gray-800">NoteBox</h1>
+            <p className="text-sm text-gray-500 mt-1"></p>
           </div>
 
           <Alert type="error" message={error} onClose={() => setError('')} />
