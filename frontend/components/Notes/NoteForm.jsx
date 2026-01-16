@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
-import { Plus, FileText, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, FileText, Sparkles, ChevronDown, ChevronUp, Folder } from 'lucide-react';
 import NoteEditor from './NoteEditor';
+import { FOLDER_COLORS } from './FolderSidebar';
 
-const NoteForm = ({ onSubmit }) => {
-  const [formData, setFormData] = useState({ title: '', content: '' });
+const NoteForm = ({ onSubmit, folders = [], selectedFolder }) => {
+  const [formData, setFormData] = useState({ title: '', content: '', folderId: selectedFolder || 'uncategorized' });
   const [loading, setLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Update folderId when selectedFolder changes
+  React.useEffect(() => {
+    if (selectedFolder && selectedFolder !== 'all') {
+      setFormData(prev => ({ ...prev, folderId: selectedFolder }));
+    }
+  }, [selectedFolder]);
 
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.content.trim()) {
@@ -15,12 +23,16 @@ const NoteForm = ({ onSubmit }) => {
 
     setLoading(true);
     try {
-      await onSubmit(formData.title, formData.content);
-      setFormData({ title: '', content: '' });
+      await onSubmit(formData.title, formData.content, formData.folderId);
+      setFormData({ title: '', content: '', folderId: selectedFolder || 'uncategorized' });
       setIsExpanded(false);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getColorClasses = (colorName) => {
+    return FOLDER_COLORS.find(c => c.name === colorName) || FOLDER_COLORS[0];
   };
 
   const handleContentChange = (newContent) => {
@@ -67,6 +79,25 @@ const NoteForm = ({ onSubmit }) => {
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border-0 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-gray-800 placeholder-gray-400 font-medium"
                 disabled={loading}
               />
+            </div>
+
+            {/* Folder Selector */}
+            <div className="relative">
+              <Folder size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <select
+                value={formData.folderId}
+                onChange={(e) => setFormData({ ...formData, folderId: e.target.value })}
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 border-0 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-gray-800 font-medium appearance-none cursor-pointer"
+                disabled={loading}
+              >
+                <option value="uncategorized">Uncategorized</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
             
             {/* Markdown Editor - Fixed height with internal scroll */}

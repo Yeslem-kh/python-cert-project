@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
-import { Edit2, Trash2, Save, X, Clock, Calendar, FileText } from 'lucide-react';
+import { Edit2, Trash2, Save, X, Clock, Calendar, FileText, Folder, ChevronDown } from 'lucide-react';
 import MarkdownRenderer from '../Common/MarkdownRenderer';
 import NoteEditor from './NoteEditor';
+import { FOLDER_COLORS } from './FolderSidebar';
 
-const NoteItem = ({ note, onUpdate, onDelete }) => {
+const NoteItem = ({ note, onUpdate, onDelete, folders = [], currentFolderId = 'uncategorized' }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({ title: note.title, content: note.content });
+  const [editData, setEditData] = useState({ title: note.title, content: note.content, folderId: currentFolderId });
   const [loading, setLoading] = useState(false);
   const [showActions, setShowActions] = useState(false);
+
+  const getColorClasses = (colorName) => {
+    return FOLDER_COLORS.find(c => c.name === colorName) || FOLDER_COLORS[0];
+  };
+
+  const getCurrentFolder = () => {
+    if (currentFolderId === 'uncategorized') return { name: 'Uncategorized', color: 'slate' };
+    return folders.find(f => f.id === currentFolderId) || { name: 'Uncategorized', color: 'slate' };
+  };
 
   const handleSave = async () => {
     if (!editData.title.trim() || !editData.content.trim()) {
@@ -17,7 +27,7 @@ const NoteItem = ({ note, onUpdate, onDelete }) => {
 
     setLoading(true);
     try {
-      await onUpdate(note.id, editData.title, editData.content);
+      await onUpdate(note.id, editData.title, editData.content, editData.folderId);
       setIsEditing(false);
     } finally {
       setLoading(false);
@@ -25,7 +35,7 @@ const NoteItem = ({ note, onUpdate, onDelete }) => {
   };
 
   const handleCancel = () => {
-    setEditData({ title: note.title, content: note.content });
+    setEditData({ title: note.title, content: note.content, folderId: currentFolderId });
     setIsEditing(false);
   };
 
@@ -75,6 +85,25 @@ const NoteItem = ({ note, onUpdate, onDelete }) => {
               placeholder="Note title..."
             />
           </div>
+
+          {/* Folder Selector */}
+          <div className="relative shrink-0">
+            <Folder size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <select
+              value={editData.folderId}
+              onChange={(e) => setEditData({ ...editData, folderId: e.target.value })}
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 border-0 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all text-gray-800 font-medium appearance-none cursor-pointer"
+              disabled={loading}
+            >
+              <option value="uncategorized">Uncategorized</option>
+              {folders.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
           
           {/* Markdown Editor - Fixed height with internal scroll */}
           <NoteEditor
@@ -121,9 +150,18 @@ const NoteItem = ({ note, onUpdate, onDelete }) => {
       {/* Card Header */}
       <div className="flex items-start justify-between p-5 pb-0">
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-800 truncate pr-4">
-            {note.title}
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-lg font-semibold text-gray-800 truncate pr-4">
+              {note.title}
+            </h3>
+            {/* Folder Badge */}
+            {currentFolderId !== 'uncategorized' && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${getColorClasses(getCurrentFolder().color).bg} ${getColorClasses(getCurrentFolder().color).text}`}>
+                <Folder size={10} />
+                {getCurrentFolder().name}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3 mt-1">
             <span className="flex items-center gap-1 text-xs text-gray-400">
               <Calendar size={12} />

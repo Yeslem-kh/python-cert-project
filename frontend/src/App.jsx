@@ -9,6 +9,7 @@ import Alert from '../components/Common/Alert';
 // import ExploitHint from '../components/Common/ExploitHint';
 import NoteForm from '../components/Notes/NoteForm';
 import NoteList from '../components/Notes/NoteList';
+import FolderSidebar from '../components/Notes/FolderSidebar';
 import ProfileForm from '../components/Profile/ProfileForm';
 import AdminDashboard from '../components/Admin/AdminDashboard';
 
@@ -22,6 +23,58 @@ function App() {
   const [notes, setNotes] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Folder/Category state
+  const [folders, setFolders] = useState([]);
+  const [selectedFolder, setSelectedFolder] = useState('all');
+  const [noteCategories, setNoteCategories] = useState({});
+
+  // Load folders and note categories from localStorage
+  useEffect(() => {
+    const savedFolders = localStorage.getItem('noteFolders');
+    const savedCategories = localStorage.getItem('noteCategories');
+    if (savedFolders) {
+      try {
+        setFolders(JSON.parse(savedFolders));
+      } catch (err) {
+        localStorage.removeItem('noteFolders');
+      }
+    }
+    if (savedCategories) {
+      try {
+        setNoteCategories(JSON.parse(savedCategories));
+      } catch (err) {
+        localStorage.removeItem('noteCategories');
+      }
+    }
+  }, []);
+
+  // Save folders to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('noteFolders', JSON.stringify(folders));
+  }, [folders]);
+
+  // Save note categories to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('noteCategories', JSON.stringify(noteCategories));
+  }, [noteCategories]);
+
+  // Calculate note counts per folder
+  const getNoteCounts = () => {
+    const counts = { all: notes.length, uncategorized: 0 };
+    folders.forEach(f => { counts[f.id] = 0; });
+    
+    notes.forEach(note => {
+      const category = noteCategories[note.id] || 'uncategorized';
+      if (counts[category] !== undefined) {
+        counts[category]++;
+      } else {
+        counts['uncategorized']++;
+      }
+    });
+    
+    return counts;
+  };
 
   // Load user data (excluding JWT) from localStorage on mount
   useEffect(() => {
@@ -115,9 +168,14 @@ function App() {
   };
 
   // Note handlers (Modified: JWT parameter removed from calls)
-  const handleCreateNote = async (title, content) => {
+  const handleCreateNote = async (title, content, folderId = 'uncategorized') => {
     try {
-      await api.createNote(title, content);
+      const newNote = await api.createNote(title, content);
+      // Store the category for this note
+      setNoteCategories(prev => ({
+        ...prev,
+        [newNote.id]: folderId
+      }));
       showSuccess('Note created successfully!');
       loadNotes();
     } catch (err) {
@@ -125,9 +183,16 @@ function App() {
     }
   };
 
-  const handleUpdateNote = async (noteId, title, content) => {
+  const handleUpdateNote = async (noteId, title, content, folderId) => {
     try {
       await api.updateNote(noteId, title, content);
+      // Update the category if provided
+      if (folderId) {
+        setNoteCategories(prev => ({
+          ...prev,
+          [noteId]: folderId
+        }));
+      }
       showSuccess('Note updated successfully!');
       loadNotes();
     } catch (err) {
@@ -138,11 +203,41 @@ function App() {
   const handleDeleteNote = async (noteId) => {
     try {
       await api.deleteNote(noteId);
+      // Remove category mapping
+      setNoteCategories(prev => {
+        const newCategories = { ...prev };
+        delete newCategories[noteId];
+        return newCategories;
+      });
       showSuccess('Note deleted successfully!');
       loadNotes();
     } catch (err) {
       showError(err.message);
     }
+  };
+
+  // Folder handlers
+  const handleCreateFolder = (folder) => {
+    setFolders(prev => [...prev, folder]);
+    showSuccess(`Folder "${folder.name}" created!`);
+  };
+
+  const handleDeleteFolder = (folderId) => {
+    setFolders(prev => prev.filter(f => f.id !== folderId));
+    // Move notes from deleted folder to uncategorized
+    setNoteCategories(prev => {
+      const newCategories = { ...prev };
+      Object.keys(newCategories).forEach(noteId => {
+        if (newCategories[noteId] === folderId) {
+          newCategories[noteId] = 'uncategorized';
+        }
+      });
+      return newCategories;
+    });
+    if (selectedFolder === folderId) {
+      setSelectedFolder('all');
+    }
+    showSuccess('Folder deleted!');
   };
 
   // Profile handler (Modified: JWT parameter removed)
@@ -223,22 +318,42 @@ function App() {
         onLogout={handleLogout}
       />
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <Alert type="error" message={error} onClose={() => setError('')} />
         <Alert type="success" message={success} onClose={() => setSuccess('')} />
 
         {currentPage === 'home' && (
-          <div>
-            {/* {user.role !== 'admin' && (
-              // <ExploitHint userId={user.id} onExploit={handleExploit} />
-            )} */}
-            
-            <NoteForm onSubmit={handleCreateNote} />
-            <NoteList
-              notes={notes}
-              onUpdate={handleUpdateNote}
-              onDelete={handleDeleteNote}
+          <div className="flex gap-6">
+            {/* Folder Sidebar */}
+            <FolderSidebar
+              folders={folders}
+              selectedFolder={selectedFolder}
+              onSelectFolder={setSelectedFolder}
+              onCreateFolder={handleCreateFolder}
+              onDeleteFolder={handleDeleteFolder}
+              noteCounts={getNoteCounts()}
             />
+            
+            {/* Main Content */}
+            <div className="flex-1 min-w-0">
+              {/* {user.role !== 'admin' && (
+                // <ExploitHint userId={user.id} onExploit={handleExploit} />
+              )} */}
+              
+              <NoteForm 
+                onSubmit={handleCreateNote} 
+                folders={folders}
+                selectedFolder={selectedFolder}
+              />
+              <NoteList
+                notes={notes}
+                onUpdate={handleUpdateNote}
+                onDelete={handleDeleteNote}
+                folders={folders}
+                selectedFolder={selectedFolder}
+                noteCategories={noteCategories}
+              />
+            </div>
           </div>
         )}
 
